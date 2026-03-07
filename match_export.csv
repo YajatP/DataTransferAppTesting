@@ -1,0 +1,2 @@
+rowid,timestamp,form,team1,scouter,alliance,match,team1Shooter,team1Defender,team1Shunter,team1CollectionRate,team1ShootingAccuracy,team1ShootingRate,team1Counterdefense,team1CyclesPerAllianceShift,team1ShunterRate,team1DefenseIsEffective,team1DefendLocations,team1EndgameLevel,team1ClimbPosition,team1ClimbedFromRack,team1ClimbSpeed,yellowCard,redCard,team1NoShow,team1Disabled,penalties,isMarkedForReview,comments
+1,2026-03-07 21:49:19,match,6767,RonCollins,blue,1,0,1,0,0.0,0.0,0.0,0,0,0.0,0,"false,false,false,true,false",1,left,0,3,0,0,0,0,0,0,
