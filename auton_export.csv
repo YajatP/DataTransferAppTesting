@@ -1,2 +1,0 @@
-rowid,timestamp,form,team,scouter,match,alliance,startPos,autoLeave,depotDisrupted,outpostDisrupted,topDisrupted,middleDisrupted,bottomDisrupted,autoCycles,estimatedFuel,rightClimb,middleClimb,leftClimb,centerLineCrossed,overBumb,underTrench
-1,2026-03-07 02:51:21,auton,6369,Alice,1,red,left,1,0,1,0,1,0,5,12,1,0,0,1,0,1
