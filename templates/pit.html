@@ -1,0 +1,598 @@
+<!doctype html>
+<html>
+  <style>
+    /* General Styles */
+    html {
+      scrollbar-color: #424243 #161618;
+      scrollbar-width: medium;
+      background-color: #111114;
+    }
+    body {
+      margin: 0;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      table-layout: fixed;
+    }
+    th,
+    td {
+      border: 1px solid #555;
+      padding: 6px;
+      text-align: left;
+      color: white;
+      font-family: sans-serif;
+    }
+    th {
+      background-color: #bb4a40;
+      font-weight: bold;
+      color: white;
+    }
+    .coral > th {
+      background-color: #8a40bb;
+      font-weight: bold;
+    }
+    .algae > th {
+      background-color: #40bb6b;
+      font-weight: bold;
+      color: black;
+    }
+    .climb > th {
+      background-color: #4067bb;
+      font-weight: bold;
+    }
+    p,
+    h1,
+    h2,
+    h3,
+    h4 {
+      color: white;
+      font-family: sans-serif;
+    }
+
+    .notes {
+      white-space: pre-line;
+      background-color: #0d0d0d;
+      padding: 8px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Carousel Styles */
+    .carousel {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      gap: 10px;
+      padding-left: 20px;
+      padding-right: 20px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+    .carousel-item {
+      flex: none;
+      scroll-snap-align: start;
+    }
+    .carousel-item img {
+      max-height: 200px;
+      border: 2px solid #555;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    .carousel-item {
+      padding: 5px;
+    }
+    .carousel-item img:hover {
+      transform: scale(1.05);
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      overflow: hidden;
+    }
+    .modal img {
+      max-width: 90%;
+      max-height: 90%;
+      border: 2px solid #555;
+      border-radius: 6px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      animation: zoomIn 0.3s ease;
+    }
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 24px;
+      color: white;
+      background: none;
+      border: none;
+      cursor: pointer;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .data-grid {
+      column-count: 3; /* Three masonry columns */
+      column-gap: 10px; /* Space between columns */
+      padding: 10px;
+    }
+
+    .section {
+      background-color: #181818;
+      border-radius: 8px;
+      padding: 10px;
+      box-sizing: border-box;
+      display: inline-block;
+      width: 100%;
+      break-inside: avoid;
+      margin-top: 10px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: center;
+    }
+
+    @media (max-width: 1200px) {
+      .data-grid {
+        column-count: 2;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .data-grid {
+        column-count: 1;
+      }
+    }
+
+    /* Animations */
+    @keyframes zoomIn {
+      from {
+        transform: scale(0.8);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+
+  <body>
+    <div class="section">
+      <h1>
+        Team {{team}}{{" Pit Scouting Report" if generator == "report" else ""}}
+      </h1>
+      <h2>Event: {{event}}</h2>
+      <h4>Data</h4>
+      <p>Import Timestamp {{timestamp}} UTC</p>
+    </div>
+
+    {% if generator == "report" and images %}
+    <div class="section">
+      <h3>Images</h3>
+      <div class="carousel">
+        {% for image in images %}
+        <div class="carousel-item">
+          <img src="{{ image }}" alt="Image" onclick="openModal(this.src)" />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="data-grid">
+      <div class="section">
+        <h3>Robot Physical</h3>
+        <table>
+          <tr>
+            <th>Length</th>
+            <th>Width</th>
+            <th>Weight</th>
+          </tr>
+          <tr>
+            <td>{{length if length else "Data Incomplete"}}in</td>
+            <td>{{width if width else "Data Incomplete"}}in</td>
+            <td>{{weight if weight else "Data Incomplete"}}lbs</td>
+          </tr>
+        </table>
+        <table>
+          <tr>
+            <th>Drivebase</th>
+          </tr>
+          <tr>
+            <td>{{drivebase if drivebase else "Data Incomplete"}}</td>
+          </tr>
+        </table>
+
+        <h4>Repairability: {{repairability if repairability else "Data Incomplete"}} Stars</h4>
+      
+        <h4>
+          Robot Type:
+          {% if kitbotType == "not" %}
+          Custom
+          {% elif kitbotType == "wcp" %}
+          WCP
+          {% elif kitbotType == "rev" %}
+          REV
+          {% elif kitbotType == "kitbot" %}
+          FIRST KitBot
+          {% elif kitbotType == "everybot" %}
+          Everybot
+          {% else %}
+          Unknown (there is a data issue somewhere)
+          {% endif %}
+        
+        </h4>
+        {% if not kitbotType == "not" and isModifiedKit %}
+        <h4>Kitbot is Modified</h4>
+        {% endif %}
+        
+        
+      </div>
+      <div class="section">
+        <h3>Robot Auton</h3>
+        {% if autonExists %}
+
+        <h4><img
+          src="{{checkBase64Icon if autonExit else xBase64Icon}}"
+          alt="W"
+          style="vertical-align: center;"
+          height="36px"
+        />Exit</h4>
+
+        <h4>Starting Position Abilities</h4>
+        <table>
+          <tr>
+            <th>Left</th>
+            <th>Middle</th>
+            <th>Right</th>
+          </tr>
+          <tr>
+            <td>
+              <img
+                src="{{checkBase64Icon if canAutoLeft else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if canAutoLeft else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if canAutoMid else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if canAutoMid else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if canAutoRight else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if canAutoRight else "No"}}
+            </td>
+          </tr>
+        </table>
+
+        <h4>Auton Coral</h4>
+        <table>
+          <tr class="coral">
+            <th>L1</th>
+            <th>L2</th>
+            <th>L3</th>
+            <th>L4</th>
+          </tr>
+          <tr>
+            <td>
+              {{ autonL1Num }}
+            </td>
+            <td>
+              {{ autonL2Num }}
+            </td>
+            <td>
+              {{ autonL3Num }}
+            </td>
+            <td>
+              {{ autonL4Num }}
+            </td>
+          </tr>
+        </table>
+        
+        <h4>Auton Algae</h4>
+        <table>
+          <tr class="algae">
+            <th>Upper Descore</th>
+            <th>Lower Descore</th>
+            <th>Processor</th>
+            <th>Net</th>
+          </tr>
+          <tr>
+            <td>
+              {{ autonUpperAlgaeDescore }}
+            </td>
+            <td>
+              {{ autonLowerAlgaeDescore }}
+            </td>
+            <td>
+              {{ autonProcessor }}
+            </td>
+            <td>
+              {{ autonNetScore }}
+            </td>
+          </tr>
+        </table>
+
+        <h4>Auto Strategy</h4>
+        <p class="notes">
+          {{ autonStrategy | replace('**', '\n') if notes else "No Notes"}}
+        </p>
+        {% else %}
+        <h2><img src="{{warnBase64Icon}}" alt="W" height="32px" /> No Auton</h2>
+        {% endif %}
+      </div>
+      <div class="section">
+        <h3>Robot Scoring</h3>
+        <h4>Coral</h4>
+        <table>
+          <tr class="coral">
+            <th>L1</th>
+            <th>L2</th>
+            <th>L3</th>
+            <th>L4</th>
+          </tr>
+          <tr>
+            <td>
+              <img
+                src="{{checkBase64Icon if lOne else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if lOne else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if lTwo else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if lTwo else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if lThree else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if lThree else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if lFour else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if lFour else "No"}}
+            </td>
+          </tr>
+        </table>
+        <h4>Algae</h4>
+        <table>
+          <tr class="algae">
+            <th>Processor</th>
+            <th>Barge</th>
+            <th>Descore</th>
+          </tr>
+          <tr>
+            <td>
+              <img
+                src="{{checkBase64Icon if processor else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if processor else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if barge else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if barge else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if descore else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if descore else "No"}}
+            </td>
+          </tr>
+        </table>
+        <h4>Endgame / Climb</h4>
+        <table>
+          <tr class="climb">
+            <th>Deep Climb</th>
+            <th>Shallow Climb</th>
+          </tr>
+          <tr>
+            <td>
+              <img
+                src="{{checkBase64Icon if deepClimb else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if deepClimb else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if shallowClimb else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if shallowClimb else "No"}}
+            </td>
+          </tr>
+        </table>
+        <h4>Ground Intake</h4>
+        <p>
+          <img
+            src="{{checkBase64Icon if groundIntake else xBase64Icon}}"
+            style="vertical-align: middle"
+            alt="W"
+            height="22px"
+          />{{"Yes" if groundIntake else "No"}}</p>
+      </div>
+      <div class="section">
+        <h3>Strategy</h3>
+
+        <h4>Cycle Roles</h4>
+        <table>
+          <tr>
+            <th>Coral</th>
+            <th>Algae</th>
+            <th>Defense</th>
+            <th>Feed</th>
+          </tr>
+          <tr>
+            <td>
+              <img
+                src="{{checkBase64Icon if coralCycle else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if coralCycle else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if algaeCycle else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if algaeCycle else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if defense else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if defense else "No"}}
+            </td>
+            <td>
+              <img
+                src="{{checkBase64Icon if feed else xBase64Icon}}"
+                style="vertical-align: middle"
+                alt="W"
+                height="22px"
+              />
+              {{"Yes" if feed else "No"}}
+            </td>
+          </tr>
+        </table>
+        <h4>Human Player Preferred Position</h4>
+        <p>{{ humanPlayerLocation if humanPlayerLocation else "Data Incomplete" }}</p>
+      </div>
+      <div class="section">
+        <h3>Drive Team Experience</h3>
+        <table>
+          <tr>
+            <th>Driver</th>
+            <th>Operator</th>
+            <th>Coach</th>
+          </tr>
+          <tr>
+            <td>{{driverYears if driverYears else "Data Incomplete"}} Years</td>
+            <td>{{operatorYears if operatorYears else "Data Incomplete"}} Years</td>
+            <td>{{coachYears if coachYears else "Data Incomplete"}} Years {{"(Adult)" if isCoachAdult}}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="section">
+        <h3>Comments</h3>
+        <!-- prettier-ignore -->
+        <p class="notes">{{ notes | replace('**', '\n') if notes else "No Notes"}}</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      {% if generator == "report" %}
+      <p>
+        <img
+          src="{{logo16Base64}}"
+          style="vertical-align: middle"
+          alt="Logo"
+          height="18px"
+        />
+        Report generated by 6369 Scouting Transfer
+      </p>
+      {% endif %}
+    </div>
+
+    <!-- Modal Structure -->
+    <div class="modal" id="imageModal">
+      <button class="modal-close" onclick="closeModal()">
+        <img
+          src="{{closeBase64Icon}}"
+          style="vertical-align: middle"
+          alt="X"
+          height="30px"
+        />
+      </button>
+      <img id="modalImage" src="" alt="Expanded View" />
+    </div>
+
+    <script>
+      // Open modal with image
+      function openModal(imageSrc) {
+        const modal = document.getElementById("imageModal");
+        const modalImage = document.getElementById("modalImage");
+        modalImage.src = imageSrc;
+        modal.style.display = "flex";
+      }
+
+      // Close modal
+      function closeModal() {
+        const modal = document.getElementById("imageModal");
+        modal.style.display = "none";
+      }
+    </script>
+  </body>
+</html>
