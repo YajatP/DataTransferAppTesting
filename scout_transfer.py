@@ -277,6 +277,7 @@ def parse_scan(line: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]
     Parse a QR-scanned line.
     Returns (form_name, data_dict, error_string).
     On error, form_name and data_dict will be None.
+    Tolerates slight field count mismatches (extra/missing fields).
     """
     line = line.strip()
     if not line:
@@ -289,15 +290,19 @@ def parse_scan(line: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]
         return None, None, f"Unknown form '{form_name}'"
 
     expected_fields = list(FIELDS[form_name].keys())
-    if len(parts) != len(expected_fields):
-        return None, None, (
-            f"Field count mismatch for '{form_name}': "
-            f"got {len(parts)}, expected {len(expected_fields)}"
-        )
+    got = len(parts)
+    expected = len(expected_fields)
+
+    if got != expected:
+        warn(f"{form_name.upper()} field count: got {got}, expected {expected} — saving anyway")
 
     row = {}
-    for field_name, raw_value in zip(expected_fields, parts):
-        row[field_name] = convert_value(raw_value.strip())
+    # Map as many fields as we have
+    for i, field_name in enumerate(expected_fields):
+        if i < len(parts):
+            row[field_name] = convert_value(parts[i].strip())
+        else:
+            row[field_name] = None  # missing fields → NULL
 
     return form_name, row, None
 
