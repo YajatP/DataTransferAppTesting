@@ -61,6 +61,7 @@ DELIMITER = "||"
 
 FIELDS = {
     "pit": {
+        "eventID": "TEXT",
         "form": "TEXT",
         "team": "INTEGER",
         "scouters": "TEXT",
@@ -105,6 +106,7 @@ FIELDS = {
         "isModifiedKit": "BOOLEAN",
     },
     "auton": {
+        "eventID": "TEXT",
         "form": "TEXT",
         "team": "INTEGER",
         "scouter": "TEXT",
@@ -127,6 +129,7 @@ FIELDS = {
         "underTrench": "BOOLEAN",
     },
     "match": {
+        "eventID": "TEXT",
         "form": "TEXT",
         "team1": "INTEGER",
         # "team2": "INTEGER",
