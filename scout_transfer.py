@@ -279,9 +279,16 @@ def parse_scan(line: str) -> Tuple[Optional[str], Optional[dict], Optional[str]]
         return None, None, None  # blank line, silently skip
 
     parts = line.split(DELIMITER)
-    form_name = parts[0].strip().lower()
+    
+    if len(parts) < 2:
+        return None, None, f"Scan too short: '{line}'"
+
+    # 2026 Schema: Index 0 is eventID, Index 1 is the form name (pit/match/auton)
+    form_name = parts[1].strip().lower()
 
     if form_name not in FIELDS:
+        if parts[0].strip().lower() in FIELDS:
+            return None, None, f"Legacy QR code detected: '{parts[0]}'. The 2026 schema expects eventID first."
         return None, None, f"Unknown form '{form_name}'"
 
     expected_fields = list(FIELDS[form_name].keys())
