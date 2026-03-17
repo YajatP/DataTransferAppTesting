@@ -147,3 +147,85 @@ python3 scout_transfer.py --help
 | `--db` | SQLite database file | `scouting.db` |
 | `--stdin` | Read from keyboard/pipe instead of serial | Off |
 | `--export` | Export existing DB to CSV and quit | Off |
+
+---
+
+## Desktop App (GUI)
+
+A standalone desktop app with a dark-themed UI, live status indicators, and a built-in tablet manager.
+
+### Features
+
+- **Scanner Connection** — Connect to USB QR scanners with port/baud selection and live status dots
+- **Manual Entry** — Paste QR data directly (no scanner needed)
+- **Live Scan Log** — Scrolling feed with ✓/⚠/✗ icons and timestamps
+- **Data Tables** — Tabbed view of all pit, match, and auton data
+- **CSV Export** — One-click export with success confirmation
+- **Tablet Manager** — Fetch scouting app releases from GitHub, download APKs, and install to Android tablets via ADB
+
+### Running the GUI (from source)
+
+```bash
+# Activate the project's virtual environment
+source .venv/bin/activate
+
+# Launch the GUI
+python scout_transfer_gui.py
+```
+
+### Pre-Built App
+
+#### macOS
+
+1. Download `ScoutTransfer-macOS.zip` from the [Releases](../../releases) page (or GitHub Actions artifacts)
+2. Unzip and move `ScoutTransfer.app` to your Applications folder
+3. If macOS blocks the app, run: `xattr -cr ScoutTransfer.app`
+4. Double-click to open
+
+#### Windows
+
+1. Download `ScoutTransfer.exe` from the [Releases](../../releases) page (or GitHub Actions artifacts)
+2. Double-click to run — no installation needed
+3. Windows Defender may show a warning on first launch — click "More info" → "Run anyway"
+
+### Building from Source
+
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# macOS (.app bundle)
+pyinstaller --name ScoutTransfer --onedir --windowed --noconfirm \
+  --add-data "scout_transfer.py:." --add-data "icons:icons" \
+  --icon icons/mercs.png scout_transfer_gui.py
+
+# Windows (.exe)
+pyinstaller --name ScoutTransfer --onefile --windowed --noconfirm ^
+  --add-data "scout_transfer.py;." --add-data "icons;icons" ^
+  --icon icons/mercs.png scout_transfer_gui.py
+```
+
+Output will be in the `dist/` folder.
+
+> **Tip:** A GitHub Actions workflow (`.github/workflows/build.yml`) is included that auto-builds both macOS and Windows versions when you push a git tag: `git tag v1.0 && git push --tags`
+
+---
+
+## Tablet Manager
+
+The Tablet Manager tab in the GUI handles scouting app deployment to Android tablets via ADB.
+
+### Prerequisites
+
+- **ADB** must be installed and available in your system PATH
+  - macOS: `brew install android-platform-tools`
+  - Windows: Download from [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools)
+- Tablets must have **USB debugging enabled** (Settings → Developer Options → USB Debugging)
+
+### Workflow
+
+1. **Start ADB Server** — Click the button to initialize the ADB connection
+2. **Discover Devices** — Connected tablets appear with their serial numbers and current app versions
+3. **Fetch Releases** — Pull the latest scouting app releases from GitHub (`Mercs-MSA/FRC_ScoutingDataCollection`)
+4. **Download** — Download an APK with progress tracking and SHA1 checksum verification
+5. **Install** — Select tablets and install the downloaded APK (auto-uninstalls old version first)

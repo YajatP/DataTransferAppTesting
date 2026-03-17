@@ -1,0 +1,2 @@
+rowid,timestamp,form,team,scouter,match,alliance,startPos,autoLeave,depotDisrupted,outpostDisrupted,topDisrupted,middleDisrupted,bottomDisrupted,autoCycles,estimatedFuel,rightClimb,middleClimb,leftClimb,centerLineCrossed,overBumb,underTrench
+1,2026-03-07 21:50:12,auton,9999,RonCollins,1,blue,AutoStartLocation.middle,1,0,0,0,0,0,0,0,0,0,0,0,0,0

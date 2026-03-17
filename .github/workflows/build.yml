@@ -1,0 +1,62 @@
+name: Build Scout Transfer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install PySide6 pyserial pyinstaller
+      - name: Build macOS app
+        run: |
+          pyinstaller --name "ScoutTransfer" \
+            --onedir --windowed --noconfirm --clean \
+            --add-data "scout_transfer.py:." \
+            --add-data "icons:icons" \
+            --icon "icons/mercs.png" \
+            scout_transfer_gui.py
+      - name: Zip the .app bundle
+        run: |
+          cd dist
+          zip -r ScoutTransfer-macOS.zip ScoutTransfer.app
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScoutTransfer-macOS
+          path: dist/ScoutTransfer-macOS.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install PySide6 pyserial pyinstaller
+      - name: Build Windows exe
+        run: |
+          pyinstaller --name "ScoutTransfer" `
+            --onefile --windowed --noconfirm --clean `
+            --add-data "scout_transfer.py;." `
+            --add-data "icons;icons" `
+            --icon "icons/mercs.png" `
+            scout_transfer_gui.py
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScoutTransfer-Windows
+          path: dist/ScoutTransfer.exe
