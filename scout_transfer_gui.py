@@ -1013,8 +1013,12 @@ class ScoutTransferGUI(QMainWindow):
         self.setMinimumSize(900, 700)
         self.resize(1000, 760)
 
-        # State
-        self.db_path = os.path.abspath(core.DB_FILE)
+        # Determine a safe, writeable location for the database
+        from platformdirs import user_documents_dir
+        safe_dir = Path(user_documents_dir()) / "ScoutTransfer"
+        safe_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.db_path = str(safe_dir / core.DB_FILE)
         self.conn = core.init_db(self.db_path)
         self.serial_thread = None
         self.scan_count = 0
