@@ -17,6 +17,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
+          pip install -r requirements.txt
           pip install PySide6 pyserial pyinstaller
       - name: Build macOS app
         run: |
@@ -24,7 +25,7 @@ jobs:
             --onedir --windowed --noconfirm --clean \
             --add-data "scout_transfer.py:." \
             --add-data "icons:icons" \
-            --icon "icons/mercs.png" \
+            --icon "icons/mercs.icns" \
             scout_transfer_gui.py
       - name: Zip the .app bundle
         run: |
@@ -46,6 +47,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
+          pip install -r requirements.txt
           pip install PySide6 pyserial pyinstaller
       - name: Build Windows exe
         run: |
@@ -53,7 +55,7 @@ jobs:
             --onefile --windowed --noconfirm --clean `
             --add-data "scout_transfer.py;." `
             --add-data "icons;icons" `
-            --icon "icons/mercs.png" `
+            --icon "icons/mercs.ico" `
             scout_transfer_gui.py
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
