@@ -15,6 +15,7 @@ import urllib.request
 import zipfile
 import stat
 import platform
+import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 
@@ -85,8 +86,10 @@ STYLESHEET = f"""
 QMainWindow {{
     background-color: {COLORS['bg']};
 }}
+QWidget#centralwidget {{
+    background-color: {COLORS['bg']};
+}}
 QWidget {{
-    background-color: transparent;
     color: {COLORS['text']};
     font-family: 'Menlo', 'Consolas', 'SF Mono', 'Courier New', monospace;
     font-size: 12px;
@@ -620,33 +623,41 @@ class InstallApkWorker(QThread):
         try:
             adb_exe = get_adb_path()
             all_ok = True
-            for serial in self.serials:
+            
+            def install_to_device(serial):
                 try:
-                    # Check if app exists, uninstall first
-                    self.log.emit(f"Installing on {serial}...")
+                    self.log.emit(f"[{serial}] Starting installation...")
                     check = subprocess.run(
                         [adb_exe, "-s", serial, "shell", "pm", "list", "packages", COLLECTION_APP_ID],
                         capture_output=True, text=True, timeout=10
                     )
                     if COLLECTION_APP_ID in check.stdout:
-                        self.log.emit(f"  Uninstalling old version from {serial}...")
+                        self.log.emit(f"[{serial}] Uninstalling old version...")
                         subprocess.run(
                             [adb_exe, "-s", serial, "uninstall", COLLECTION_APP_ID],
                             capture_output=True, text=True, timeout=30
                         )
-                    # Install new APK
+                    self.log.emit(f"[{serial}] Pushing new APK...")
                     result = subprocess.run(
                         [adb_exe, "-s", serial, "install", "-r", self.apk_path],
                         capture_output=True, text=True, timeout=120
                     )
                     if result.returncode == 0 and "Success" in result.stdout:
-                        self.log.emit(f"  ✓ Installed on {serial}")
+                        self.log.emit(f"[{serial}] ✓ Successfully installed")
+                        return True
                     else:
-                        self.log.emit(f"  ✗ Failed on {serial}: {result.stderr.strip()}")
-                        all_ok = False
+                        self.log.emit(f"[{serial}] ✗ Failed: {result.stderr.strip()}")
+                        return False
                 except Exception as e:
-                    self.log.emit(f"  ✗ Error on {serial}: {e}")
-                    all_ok = False
+                    self.log.emit(f"[{serial}] ✗ Error: {e}")
+                    return False
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(self.serials))) as executor:
+                futures = {executor.submit(install_to_device, s): s for s in self.serials}
+                for future in concurrent.futures.as_completed(futures):
+                    if not future.result():
+                        all_ok = False
+                        
             self.finished.emit(all_ok)
         except Exception as e:
             self.log.emit(f"Failed to find ADB: {e}")
