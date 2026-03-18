@@ -10,6 +10,11 @@ import time
 import hashlib
 import shutil
 import subprocess
+import ssl
+import urllib.request
+import zipfile
+import stat
+import platform
 from datetime import datetime
 from pathlib import Path
 
@@ -405,25 +410,89 @@ class SerialReaderThread(QThread):
         self._running = False
 
 
+# ─── ADB Downloader / Resolver ────────────────────────────────────────────────
+ADB_BIN_CACHE = None
+
+def get_adb_path(log_callback=None) -> str:
+    """Resolve ADB path. Triggers an automatic download if completely missing."""
+    global ADB_BIN_CACHE
+    if ADB_BIN_CACHE: return ADB_BIN_CACHE
+
+    sys_adb = shutil.which("adb")
+    if sys_adb:
+        ADB_BIN_CACHE = sys_adb
+        return sys_adb
+
+    from platformdirs import user_data_dir
+    app_dir = Path(user_data_dir("scouting_transfer", "mercs", ensure_exists=True))
+    os_name = platform.system().lower()
+    
+    adb_exe = "adb.exe" if os_name == "windows" else "adb"
+    local_adb = app_dir / "platform-tools" / adb_exe
+    
+    if local_adb.exists():
+        ADB_BIN_CACHE = str(local_adb)
+        return ADB_BIN_CACHE
+
+    if log_callback:
+        log_callback("ADB not found. Downloading Android Platform Tools (~6MB)...")
+        
+    if os_name == "windows":
+        url = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+    elif os_name == "darwin":
+        url = "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip"
+    else:
+        url = "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+        
+    zip_path = app_dir / "platform-tools.zip"
+    
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        with urllib.request.urlopen(url, context=ctx) as response, open(zip_path, 'wb') as out_file:
+            shutil.copyfileobj(response, out_file)
+            
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(app_dir)
+            
+        zip_path.unlink()
+        
+        if os_name != "windows":
+            st = os.stat(local_adb)
+            os.chmod(local_adb, st.st_mode | stat.S_IEXEC)
+            
+        if log_callback:
+            log_callback("ADB downloaded and installed successfully.")
+            
+        ADB_BIN_CACHE = str(local_adb)
+        return ADB_BIN_CACHE
+        
+    except Exception as e:
+        if log_callback:
+            log_callback(f"Failed to auto-download ADB: {e}")
+        return "adb"  # Blind fallback
+
+
 # ─── ADB / Tablet Manager Workers ─────────────────────────────────────────────
 class AdbStartWorker(QThread):
     """Start ADB server and create a connection."""
+    log = Signal(str)
     finished = Signal(bool)
     error = Signal(str)
 
     def run(self):
         try:
+            adb_exe = get_adb_path(lambda msg: self.log.emit(msg))
             result = subprocess.run(
-                ["adb", "start-server"], capture_output=True, text=True, timeout=15
+                [adb_exe, "start-server"], capture_output=True, text=True, timeout=15
             )
             if result.returncode != 0:
                 self.error.emit(f"ADB start-server failed: {result.stderr.strip()}")
                 self.finished.emit(False)
             else:
                 self.finished.emit(True)
-        except FileNotFoundError:
-            self.error.emit("ADB not found. Install Android Platform Tools and add to PATH.")
-            self.finished.emit(False)
         except Exception as e:
             self.error.emit(str(e))
             self.finished.emit(False)
@@ -436,8 +505,9 @@ class AdbDeviceWorker(QThread):
 
     def run(self):
         try:
+            adb_exe = get_adb_path()
             result = subprocess.run(
-                ["adb", "devices", "-l"], capture_output=True, text=True, timeout=10
+                [adb_exe, "devices", "-l"], capture_output=True, text=True, timeout=10
             )
             devices = []
             for line in result.stdout.strip().split("\n")[1:]:
@@ -446,7 +516,7 @@ class AdbDeviceWorker(QThread):
                     serial = parts[0]
                     # Get app version
                     ver_result = subprocess.run(
-                        ["adb", "-s", serial, "shell", "dumpsys", "package",
+                        [adb_exe, "-s", serial, "shell", "dumpsys", "package",
                          COLLECTION_APP_ID, "|", "grep", "versionName"],
                         capture_output=True, text=True, timeout=10
                     )
@@ -547,35 +617,40 @@ class InstallApkWorker(QThread):
         self.apk_path = apk_path
 
     def run(self):
-        all_ok = True
-        for serial in self.serials:
-            try:
-                # Check if app exists, uninstall first
-                self.log.emit(f"Installing on {serial}...")
-                check = subprocess.run(
-                    ["adb", "-s", serial, "shell", "pm", "list", "packages", COLLECTION_APP_ID],
-                    capture_output=True, text=True, timeout=10
-                )
-                if COLLECTION_APP_ID in check.stdout:
-                    self.log.emit(f"  Uninstalling old version from {serial}...")
-                    subprocess.run(
-                        ["adb", "-s", serial, "uninstall", COLLECTION_APP_ID],
-                        capture_output=True, text=True, timeout=30
+        try:
+            adb_exe = get_adb_path()
+            all_ok = True
+            for serial in self.serials:
+                try:
+                    # Check if app exists, uninstall first
+                    self.log.emit(f"Installing on {serial}...")
+                    check = subprocess.run(
+                        [adb_exe, "-s", serial, "shell", "pm", "list", "packages", COLLECTION_APP_ID],
+                        capture_output=True, text=True, timeout=10
                     )
-                # Install new APK
-                result = subprocess.run(
-                    ["adb", "-s", serial, "install", "-r", self.apk_path],
-                    capture_output=True, text=True, timeout=120
-                )
-                if result.returncode == 0 and "Success" in result.stdout:
-                    self.log.emit(f"  ✓ Installed on {serial}")
-                else:
-                    self.log.emit(f"  ✗ Failed on {serial}: {result.stderr.strip()}")
+                    if COLLECTION_APP_ID in check.stdout:
+                        self.log.emit(f"  Uninstalling old version from {serial}...")
+                        subprocess.run(
+                            [adb_exe, "-s", serial, "uninstall", COLLECTION_APP_ID],
+                            capture_output=True, text=True, timeout=30
+                        )
+                    # Install new APK
+                    result = subprocess.run(
+                        [adb_exe, "-s", serial, "install", "-r", self.apk_path],
+                        capture_output=True, text=True, timeout=120
+                    )
+                    if result.returncode == 0 and "Success" in result.stdout:
+                        self.log.emit(f"  ✓ Installed on {serial}")
+                    else:
+                        self.log.emit(f"  ✗ Failed on {serial}: {result.stderr.strip()}")
+                        all_ok = False
+                except Exception as e:
+                    self.log.emit(f"  ✗ Error on {serial}: {e}")
                     all_ok = False
-            except Exception as e:
-                self.log.emit(f"  ✗ Error on {serial}: {e}")
-                all_ok = False
-        self.finished.emit(all_ok)
+            self.finished.emit(all_ok)
+        except Exception as e:
+            self.log.emit(f"Failed to find ADB: {e}")
+            self.finished.emit(False)
 
 
 # ─── Tablet Manager Widget ─────────────────────────────────────────────────────
