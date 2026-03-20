@@ -209,7 +209,7 @@ QLineEdit {{
     background-color: {COLORS['surface']};
     border: 1px solid {COLORS['border']};
     border-radius: 3px;
-    padding: 8px 12px;
+    padding: 5px 8px;
     color: {COLORS['text']};
     font-family: 'Menlo', 'Consolas', 'SF Mono', monospace;
     font-size: 12px;
@@ -265,6 +265,16 @@ QTableWidget::item {{
 QTableWidget::item:selected {{
     background-color: {COLORS['red_bg']};
     color: {COLORS['red']};
+}}
+QTableWidget QLineEdit {{
+    padding: 0px 4px;
+    margin: 0px;
+    background-color: {COLORS['bg']};
+    color: #FFFFFF;
+    selection-background-color: {COLORS['red']};
+    selection-color: #FFFFFF;
+    border: 1px solid {COLORS['red']};
+    font-size: 12px;
 }}
 QHeaderView::section {{
     background-color: {COLORS['surface2']};
