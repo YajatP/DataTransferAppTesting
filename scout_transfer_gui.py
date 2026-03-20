@@ -50,6 +50,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QScrollArea,
+    QMenu,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize
 from PySide6.QtGui import QFont, QColor, QIcon
@@ -1333,9 +1334,13 @@ class ScoutTransferGUI(QMainWindow):
                 f"QTableWidget {{ alternate-background-color: {COLORS['surface2']}; }}"
             )
             table.setSelectionBehavior(QTableWidget.SelectRows)
-            table.setEditTriggers(QTableWidget.NoEditTriggers)
+            table.setEditTriggers(QTableWidget.DoubleClicked)
             table.horizontalHeader().setStretchLastSection(True)
             table.verticalHeader().setVisible(False)
+            table.setContextMenuPolicy(Qt.CustomContextMenu)
+
+            table.itemChanged.connect(self._on_table_item_changed)
+            table.customContextMenuRequested.connect(self._on_table_context_menu)
 
             self.tables[form_name] = table
             self.tabs.addTab(table, f"  {form_name.upper()}  ")
@@ -1480,6 +1485,94 @@ class ScoutTransferGUI(QMainWindow):
         )
         self._refresh_all()
 
+    def _on_table_item_changed(self, item):
+        if getattr(self, "_is_refreshing_tables", False):
+            return
+            
+        table = item.tableWidget()
+        form_name = next((name for name, t in self.tables.items() if t == table), None)
+        if not form_name:
+            return
+            
+        row = item.row()
+        col = item.column()
+        new_val = item.text()
+        col_name = table.horizontalHeaderItem(col).text()
+        
+        rowid_col = -1
+        for c in range(table.columnCount()):
+            if table.horizontalHeaderItem(c).text() == "rowid":
+                rowid_col = c
+                break
+                
+        if rowid_col == -1:
+            self._log_error("Could not find rowid column. Cannot update row.")
+            return
+            
+        if col == rowid_col:
+            self._log_warn("Editing the internal rowid is not permitted.")
+            self._refresh_tables()
+            return
+            
+        rowid_val = table.item(row, rowid_col).text()
+        
+        try:
+            cur = self.conn.cursor()
+            cur.execute(f"UPDATE {form_name} SET {col_name} = ? WHERE rowid = ?", (new_val, rowid_val))
+            self.conn.commit()
+            self._log_info(f"Updated {form_name}.{col_name} to '{new_val}' (row {rowid_val})")
+        except Exception as e:
+            self._log_error(f"Error updating database: {e}")
+            self.conn.rollback()
+            self._refresh_tables()
+
+    def _on_table_context_menu(self, pos):
+        table = self.sender()
+        item = table.itemAt(pos)
+        if not item:
+            return
+
+        menu = QMenu(self)
+        delete_action = menu.addAction("Delete Selected Row(s)")
+        
+        action = menu.exec(table.viewport().mapToGlobal(pos))
+        if action == delete_action:
+            form_name = next((name for name, t in self.tables.items() if t == table), None)
+            if not form_name:
+                return
+                
+            selected_rows = set(i.row() for i in table.selectedItems())
+            if not selected_rows:
+                return
+                
+            rowid_col = -1
+            for c in range(table.columnCount()):
+                if table.horizontalHeaderItem(c).text() == "rowid":
+                    rowid_col = c
+                    break
+                    
+            if rowid_col == -1:
+                return
+                
+            reply = QMessageBox.warning(
+                self,
+                "Delete Row(s)",
+                f"Are you sure you want to permanently delete {len(selected_rows)} record(s) from the database?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                cur = self.conn.cursor()
+                deleted = 0
+                for r in selected_rows:
+                    rowid_val = table.item(r, rowid_col).text()
+                    cur.execute(f"DELETE FROM {form_name} WHERE rowid = ?", (rowid_val,))
+                    deleted += 1
+                self.conn.commit()
+                self._log_success(f"Deleted {deleted} row(s) from {form_name}.")
+                self._refresh_all()
+
     def _export_csv(self):
         results = core.export_csv(self.conn, os.path.dirname(self.db_path) or ".")
 
@@ -1614,23 +1707,27 @@ class ScoutTransferGUI(QMainWindow):
 
     def _refresh_tables(self):
         """Reload all data tables from the database."""
-        for form_name, table in self.tables.items():
-            cur = self.conn.cursor()
-            cur.execute(f"SELECT * FROM {form_name}")
-            rows = cur.fetchall()
-            headers = [desc[0] for desc in cur.description]
+        self._is_refreshing_tables = True
+        try:
+            for form_name, table in self.tables.items():
+                cur = self.conn.cursor()
+                cur.execute(f"SELECT * FROM {form_name}")
+                rows = cur.fetchall()
+                headers = [desc[0] for desc in cur.description]
 
-            table.setColumnCount(len(headers))
-            table.setHorizontalHeaderLabels(headers)
-            table.setRowCount(len(rows))
+                table.setColumnCount(len(headers))
+                table.setHorizontalHeaderLabels(headers)
+                table.setRowCount(len(rows))
 
-            for r, row in enumerate(rows):
-                for c, val in enumerate(row):
-                    item = QTableWidgetItem(str(val) if val is not None else "")
-                    item.setToolTip(str(val) if val is not None else "NULL")
-                    table.setItem(r, c, item)
+                for r, row in enumerate(rows):
+                    for c, val in enumerate(row):
+                        item = QTableWidgetItem(str(val) if val is not None else "")
+                        item.setToolTip(str(val) if val is not None else "NULL")
+                        table.setItem(r, c, item)
 
-            table.resizeColumnsToContents()
+                table.resizeColumnsToContents()
+        finally:
+            self._is_refreshing_tables = False
 
     def _update_db_label(self):
         self.db_label.setText(f"📁 {self.db_path}")
