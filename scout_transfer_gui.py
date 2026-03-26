@@ -57,6 +57,7 @@ from PySide6.QtGui import QFont, QColor, QIcon
 
 # Import core logic from scout_transfer.py (same directory)
 import scout_transfer as core
+import _version
 
 # ─── Constants ─────────────────────────────────────────────────────────────────
 GITHUB_REPO = "Mercs-MSA/FRC_ScoutingDataCollection"
@@ -1140,11 +1141,23 @@ class ScoutTransferGUI(QMainWindow):
         header.addWidget(title)
         header.addWidget(subtitle)
         header.addStretch()
-        
+
         self.toggle_manual_btn = QPushButton("Toggle Manual Entry")
         self.toggle_manual_btn.setCheckable(True)
         self.toggle_manual_btn.clicked.connect(self._toggle_manual_entry)
         header.addWidget(self.toggle_manual_btn)
+
+        # Info button
+        info_btn = QPushButton("ℹ")
+        info_btn.setFixedSize(32, 32)
+        info_btn.setToolTip("About this app")
+        info_btn.setStyleSheet(
+            f"QPushButton {{ background-color: {COLORS['surface2']}; border: 1px solid {COLORS['border']}; "
+            f"border-radius: 16px; font-size: 15px; color: {COLORS['blue']}; padding: 0; font-weight: 700; }}"
+            f"QPushButton:hover {{ background-color: {COLORS['border']}; border-color: {COLORS['blue']}; }}"
+        )
+        info_btn.clicked.connect(self._show_about_dialog)
+        header.addWidget(info_btn)
 
         root.addLayout(header)
 
@@ -1741,6 +1754,27 @@ class ScoutTransferGUI(QMainWindow):
 
     def _update_db_label(self):
         self.db_label.setText(f"📁 {self.db_path}")
+
+    def _show_about_dialog(self):
+        version = _version.get_version()
+        build_date = _version.get_build_date()
+        QMessageBox.about(
+            self,
+            "About Scout Transfer",
+            f"<h2 style='color: {COLORS['red']}; margin-bottom: 4px;'>◆ Scout Transfer</h2>"
+            f"<p><b>Version:</b> {version}<br>"
+            f"<b>Built:</b> {build_date}</p>"
+            f"<hr>"
+            f"<p><b>FRC Team 6369 — Merge Robotics (Mercs)</b><br>"
+            f"Hosted at <b>McKinney STEAM Academy (MSA)</b><br>"
+            f"McKinney ISD, McKinney, TX</p>"
+            f"<hr>"
+            f"<p style='font-size: 11px; color: gray;'>"
+            f"Scouting data transfer tool for scanning QR codes<br>"
+            f"from the FRC Scouting Data Collection app,<br>"
+            f"storing to SQLite, and exporting to CSV.<br><br>"
+            f"github.com/Mercs-MSA</p>"
+        )
 
     def closeEvent(self, event):
         """Clean up on window close."""

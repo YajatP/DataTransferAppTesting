@@ -11,6 +11,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -19,11 +21,14 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install PySide6 pyserial pyinstaller
+      - name: Bake version
+        run: python _version.py
       - name: Build macOS app
         run: |
           pyinstaller --name "ScoutTransfer" \
             --onedir --windowed --noconfirm --clean \
             --add-data "scout_transfer.py:." \
+            --add-data "_version.py:." \
             --add-data "icons:icons" \
             --icon "icons/mercs.icns" \
             scout_transfer_gui.py
@@ -41,6 +46,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -49,11 +56,14 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install PySide6 pyserial pyinstaller
+      - name: Bake version
+        run: python _version.py
       - name: Build Windows exe
         run: |
           pyinstaller --name "ScoutTransfer" `
             --onefile --windowed --noconfirm --clean `
             --add-data "scout_transfer.py;." `
+            --add-data "_version.py;." `
             --add-data "icons;icons" `
             --icon "icons/mercs.ico" `
             scout_transfer_gui.py
@@ -67,6 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -79,11 +91,14 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install PySide6 pyserial pyinstaller
+      - name: Bake version
+        run: python _version.py
       - name: Build Linux executable
         run: |
           pyinstaller --name "ScoutTransfer" \
             --onefile --windowed --noconfirm --clean \
             --add-data "scout_transfer.py:." \
+            --add-data "_version.py:." \
             --add-data "icons:icons" \
             scout_transfer_gui.py
       - name: Upload Linux artifact
