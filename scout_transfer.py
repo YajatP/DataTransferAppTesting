@@ -74,7 +74,7 @@ FIELDS = {
         "climbSideL1": "BOOLEAN",
         "climbSideL2": "BOOLEAN",
         "climbSideL3": "BOOLEAN",
-        "groundIntake": "BOOLEAN",
+        "intakeType": "TEXT",
         "turret": "BOOLEAN",
         "hood": "BOOLEAN",
         "drum": "BOOLEAN",
