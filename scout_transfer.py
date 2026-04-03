@@ -259,18 +259,18 @@ def export_csv(conn: sqlite3.Connection, output_dir: str = "."):
     """Export each table to a CSV file. Returns list of (form, path, count)."""
     results = []
     for form in FIELDS:
+        fields = list(FIELDS[form].keys())
         cur = conn.cursor()
-        cur.execute(f"SELECT * FROM {form}")
+        cur.execute(f"SELECT {', '.join(fields)} FROM {form}")
         rows = cur.fetchall()
         if not rows:
             results.append((form, None, 0))
             continue
 
-        headers = [desc[0] for desc in cur.description]
         path = os.path.join(output_dir, f"{form}_export.csv")
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(headers)
+            writer.writerow(fields)
             writer.writerows(rows)
         results.append((form, path, len(rows)))
     return results

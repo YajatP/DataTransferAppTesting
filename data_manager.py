@@ -337,18 +337,26 @@ class DataManager(QObject):
             )
             return ""
 
-        query = f"SELECT * FROM {form}"
+        fields = list(constants.FIELDS[form].keys())
+        id_cols = ["rowid", "timestamp"] if identifiers else []
+        select_cols = ", ".join(id_cols + fields)
+        query = f"SELECT {select_cols} FROM {form}"
         self.query.exec(query)
         data = []
         while self.query.next():
             row = {}
-            for i, field in enumerate(constants.FIELDS[form]):
-                row[field] = self.query.value(i + (0 if identifiers else 2))
+            offset = 0
+            if identifiers:
+                row["rowid"] = self.query.value(0)
+                row["timestamp"] = self.query.value(1)
+                offset = 2
+            for i, field in enumerate(fields):
+                row[field] = self.query.value(i + offset)
             data.append(row)
         # convert list of dicts to csv
         csv_data = []
         if headers:
-            csv_data.append(list(constants.FIELDS[form].keys()))
+            csv_data.append(id_cols + fields)
         csv_data.extend([list(row.values()) for row in data])
         csv_str = "\n".join(
             [
